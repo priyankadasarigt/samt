@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Personal YT-DLP GUI</title>
+<style>
+    body {
+        background: #0d0d0d;
+        color: white;
+        font-family: Arial, sans-serif;
+        padding: 40px;
+    }
+    .container {
+        max-width: 700px;
+        margin: auto;
+        background: #1a1a1a;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 0 20px #000;
+    }
+    input, select, button {
+        width: 100%;
+        padding: 12px;
+        margin: 8px 0;
+        border-radius: 8px;
+        border: none;
+        font-size: 16px;
+    }
+    button {
+        background: #ff4d4d;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    button:hover {
+        background: #ff3333;
+    }
+    pre {
+        background: #0f0f0f;
+        padding: 15px;
+        border-radius: 8px;
+        max-height: 300px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+    .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎬 Personal YT-DLP Web GUI</h2>
+    <p>Private downloader • Files auto-delete in <b>30 minutes</b></p>
+
+    <label>YouTube URL</label>
+    <input id="url" placeholder="Paste YouTube link here...">
+
+    <button onclick="getFormats()">Fetch Formats</button>
+
+    <h3>Available Formats:</h3>
+    <pre id="formatsBox">Waiting...</pre>
+
+    <label>Select Video Format:</label>
+    <select id="vcode"></select>
+
+    <label>Select Audio Format:</label>
+    <select id="acode"></select>
+
+    <button onclick="startDownload()">Download</button>
+
+    <h3>Progress:</h3>
+    <pre id="progressBox">Waiting...</pre>
+
+    <a id="downloadBtn" class="hidden" href="#" download>
+        <button>⬇️ Download File Now</button>
+    </a>
+</div>
+
+<script>
+async function getFormats() {
+    const url = document.getElementById('url').value;
+    const box = document.getElementById("formatsBox");
+    box.textContent = "Loading formats...";
+
+    const res = await fetch(`/formats?url=${encodeURIComponent(url)}`);
+    const data = await res.json();
+
+    if (data.error) {
+        box.textContent = data.error;
+        return;
+    }
+
+    box.textContent = data.formats;
+
+    const vSelect = document.getElementById("vcode");
+    const aSelect = document.getElementById("acode");
+
+    vSelect.innerHTML = "";
+    aSelect.innerHTML = "";
+
+    const lines = data.formats.split("\n");
+    lines.forEach(line => {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length < 2) return;
+
+        const formatId = parts[0];
+
+        if (line.includes("video only"))
+            vSelect.innerHTML += `<option value="${formatId}">${formatId} — ${line}</option>`;
+
+        if (line.includes("audio only"))
+            aSelect.innerHTML += `<option value="${formatId}">${formatId} — ${line}</option>`;
+    });
+}
+
+async function startDownload() {
+    const url = document.getElementById("url").value;
+    const v = document.getElementById("vcode").value;
+    const a = document.getElementById("acode").value;
+    const progressBox = document.getElementById("progressBox");
+
+    progressBox.textContent = "Downloading... Please wait...";
+
+    const res = await fetch(`/download?url=${encodeURIComponent(url)}&vcode=${v}&acode=${a}`);
+    
+    if (res.status !== 200) {
+        progressBox.textContent = "Download failed.";
+        return;
+    }
+
+    const blob = await res.blob();
+    const urlBlob = URL.createObjectURL(blob);
+
+    const downloadBtn = document.getElementById("downloadBtn");
+    downloadBtn.href = urlBlob;
+    downloadBtn.classList.remove("hidden");
+
+    progressBox.textContent =
+        "✔️ Download ready!\n\n⚠️ File will be automatically deleted from server in 30 minutes.";
+}
+</script>
+
+</body>
+</html>
